@@ -1,8 +1,13 @@
 'use strict'
 
-import { app, protocol, BrowserWindow } from 'electron'
+import { app, protocol, BrowserWindow, ipcMain } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
+import { initDb } from '../database/database.js'
+import Tarif from '../database/Models/TarifModel.js'
+import User from '../database/Models/UserModel.js'
+const path = require('path')
+
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Scheme must be registered before the app is ready
@@ -20,7 +25,8 @@ async function createWindow() {
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
       nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
-      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
+      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION,
+      preload: './preload.js'
     }
   })
 
@@ -47,7 +53,9 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow()
+  }
 })
 
 // This method will be called when Electron has finished
@@ -62,6 +70,7 @@ app.on('ready', async () => {
       console.error('Vue Devtools failed to install:', e.toString())
     }
   }
+  initDb()
   createWindow()
 })
 
@@ -79,3 +88,73 @@ if (isDevelopment) {
     })
   }
 }
+
+ipcMain.on('READ_USER_LIST', (event)=>{
+  User.findAll().then(rows => {
+    event.returnValue = rows
+  }).catch(err => {
+    console.error(err)
+  })
+})
+
+ipcMain.on('READ_USER', (event, data) => {
+  User.findById(data.id).then(rows => {
+    event.returnValue = rows
+  }).catch(err => {
+    console.error(err)
+  })
+})
+
+ipcMain.on('READ_TARIF_LIST', (event) =>{
+  Tarif.findAll().then(rows => {
+    event.returnValue = rows
+  }).catch(err => {
+    console.error(err)
+  })
+})
+
+ipcMain.on('READ_TARIF', (event, data) => {
+  Tarif.findById(data.id).then(rows => {
+    event.returnValue = rows
+  }).catch(err => {
+    console.error(err)
+  })
+})
+
+ipcMain.on('SAVE_USER', (event, data) => {
+  new User(data.name, data.phone, data.pasport_id, data.tarif_id).save()
+  User.findAll().then(rows => {
+    event.reply('READ_USER_LIST', rows)
+  }).catch(err => {
+    console.error(err)
+  })
+})
+
+ipcMain.on('UPDATE_USER', (event, data) => {
+  new User(data.name, data.phone, data.pasport_id, data.tarif_id, data.id).update()
+})
+
+ipcMain.on('UPDATE_TARIF', (event, data) => {
+  new Tarif(data.title, data.price, data.minute, data.sms, data.mobileInternet, data.homeInternet, data.id).update()
+})
+
+ipcMain.on('DELETE_USER', (event, data) => {
+  User.delete(data.id)
+})
+
+ipcMain.on('SAVE_TARIF', (event, data) => {
+  new Tarif(data.title, data.price, data.minute, data.sms, data.phoneInternet, data.homeInternet).save()
+  Tarif.findAll().then(rows => {
+    event.reply('READ_TARIF_LIST', rows)
+  }).catch(err => {
+    console.error(err)
+  })
+})
+
+ipcMain.on('EVERYMONTH_CHANGE', (event, data) => {
+  User.get_everymonth_change(data.tarif_id).then(rows => {
+    event.returnValue = rows
+  }).catch(err => {
+    console.error(err)
+  })
+})

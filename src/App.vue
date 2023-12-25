@@ -1,6 +1,11 @@
 <template>
  <div id="app" class="app">
-   <sidebar/>
+   <sidebar>
+      <ul>
+         <li>HOME</li>
+         <li>ABOUT</li>
+      </ul>
+   </sidebar>
    <router-view />
  </div>
 </template>
