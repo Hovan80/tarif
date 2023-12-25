@@ -17,7 +17,7 @@
         </router-link>
         <router-link class="link-button" to="/report">
             <File class="link-icon" :size=icon_size />
-            <span class="link-label">Отчёты</span>
+            <span class="link-label">Отчёт</span>
         </router-link>
     </div>
   </aside>
